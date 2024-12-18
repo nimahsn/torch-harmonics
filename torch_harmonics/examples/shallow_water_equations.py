@@ -64,7 +64,14 @@ class ShallowWaterSolver(nn.Module):
 
         # SHT
         self.sht = harmonics.RealSHT(nlat, nlon, lmax=lmax, mmax=mmax, grid=grid, csphase=False)
+        def sht_real_img(ugrid):
+            spec = self.sht(ugrid)
+            return spec.real, spec.imag
+        self.sht_real_img = staticmethod(sht_real_img)
         self.isht = harmonics.InverseRealSHT(nlat, nlon, lmax=lmax, mmax=mmax, grid=grid, csphase=False)
+        def isht_real_img(real, imag):
+            return self.isht(torch.complex(real, imag))
+        self.isht_real_img = staticmethod(isht_real_img)
         self.vsht = harmonics.RealVectorSHT(nlat, nlon, lmax=lmax, mmax=mmax, grid=grid, csphase=False)
         self.ivsht = harmonics.InverseRealVectorSHT(nlat, nlon, lmax=lmax, mmax=mmax, grid=grid, csphase=False)
 
@@ -188,7 +195,12 @@ class ShallowWaterSolver(nn.Module):
 
         return dudtspec
 
-    def galewsky_initial_condition(self):
+    def dudtspec_real_imag(self, uspec_real, uspec_imag):
+        uspec = torch.complex(uspec_real, uspec_imag)
+        uspec = self.dudtspec(uspec)
+        return uspec.real, uspec.imag
+
+    def galewsky_initial_condition(self, umax: float=80.):
         """
         Initializes non-linear barotropically unstable shallow water test case of Galewsky et al. (2004, Tellus, 56A, 429-440).
 
@@ -197,7 +209,7 @@ class ShallowWaterSolver(nn.Module):
         """
         device = self.lap.device
 
-        umax = 80.
+        umax = umax
         phi0 = torch.asarray(torch.pi / 7., device=device)
         phi1 = torch.asarray(0.5 * torch.pi - phi0, device=device)
         phi2 = 0.25 * torch.pi
