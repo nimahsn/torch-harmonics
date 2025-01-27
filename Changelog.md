@@ -2,6 +2,24 @@
 
 ## Versioning
 
+### v0.7.5
+* New normalization mode `support` for DISCO convolutions
+* More efficient computation of Morlet filter basis
+* Changed default for Morlet filter basis to a Hann window function
+
+### v0.7.4
+
+* New filter basis normalization in DISCO convolutions
+* More robust pre-computation of DISCO convolution tensor
+* Reworked DISCO filter basis datastructure
+* Support for new filter basis types
+* Added Zernike polynomial basis on a disk
+* Added Morlet wavelet basis functions on a spherical disk
+* Cleaning up the SFNO example and adding new Local Spherical Neural Operator model
+* Updated resampling module to extend input signal to the poles if needed
+* Added slerp interpolation to the resampling module
+* Added distributed resampling module
+
 ### v0.7.3
 
 * Changing default grid in all SHT routines to `equiangular`

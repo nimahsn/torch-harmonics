@@ -29,11 +29,11 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-__version__ = "0.7.3"
+__version__ = "0.7.5a"
 
 from .sht import RealSHT, InverseRealSHT, RealVectorSHT, InverseRealVectorSHT
 from .convolution import DiscreteContinuousConvS2, DiscreteContinuousConvTransposeS2
-from .resampling import ResampleS2
+from .resample import ResampleS2
 from . import quadrature
 from . import random_fields
 from . import examples

@@ -186,7 +186,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 nlat = 512
 nlon = 2*nlat
 batch_size = 32
-signal = torch.randn(batch_size, nlat, nlon)
+signal = torch.randn(batch_size, nlat, nlon, device=device)
 
 # transform data on an equiangular grid
 sht = th.RealSHT(nlat, nlon, grid="equiangular").to(device)
@@ -259,7 +259,7 @@ If you use `torch-harmonics` in an academic paper, please cite [1]
 <a id="1">[1]</a>
 Bonev B., Kurth T., Hundt C., Pathak, J., Baust M., Kashinath K., Anandkumar A.;
 Spherical Fourier Neural Operators: Learning Stable Dynamics on the Sphere;
-arXiv 2306.0383, 2023.
+International Conference on Machine Learning, 2023. [arxiv link](https://arxiv.org/abs/2306.03838)
 
 <a id="1">[2]</a>
 Schaeffer N.;

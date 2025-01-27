@@ -1,6 +1,6 @@
 # coding=utf-8
 
-# SPDX-FileCopyrightText: Copyright (c) 2022 The torch-harmonics Authors. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2025 The torch-harmonics Authors. All rights reserved.
 # SPDX-License-Identifier: BSD-3-Clause
 #
 # Redistribution and use in source and binary forms, with or without
@@ -40,7 +40,7 @@ import torch_harmonics as harmonics
 import torch_harmonics.distributed as thd
 
 
-class TestDistributedDiscreteContinuousConvolution(unittest.TestCase):
+class TestDistributedResampling(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
@@ -156,10 +156,10 @@ class TestDistributedDiscreteContinuousConvolution(unittest.TestCase):
 
         return tensor_gather
 
-    def _gather_helper_bwd(self, tensor, B, C, convolution_dist):
+    def _gather_helper_bwd(self, tensor, B, C, resampling_dist):
         # we need the shapes
-        lat_shapes = convolution_dist.lat_in_shapes
-        lon_shapes = convolution_dist.lon_in_shapes
+        lat_shapes = resampling_dist.lat_in_shapes
+        lon_shapes = resampling_dist.lon_in_shapes
 
         # gather in W
         if self.grid_size_w > 1:
@@ -173,7 +173,7 @@ class TestDistributedDiscreteContinuousConvolution(unittest.TestCase):
 
         # gather in H
         if self.grid_size_h > 1:
-            gather_shapes = [(B, C, h, convolution_dist.nlon_in) for h in lat_shapes]
+            gather_shapes = [(B, C, h, resampling_dist.nlon_in) for h in lat_shapes]
             olist = [torch.empty(shape, dtype=tensor_gather.dtype, device=tensor_gather.device) for shape in gather_shapes]
             olist[self.hrank] = tensor_gather
             dist.all_gather(olist, tensor_gather, group=self.h_group)
@@ -183,53 +183,31 @@ class TestDistributedDiscreteContinuousConvolution(unittest.TestCase):
 
     @parameterized.expand(
         [
-            [128, 256, 128, 256, 32, 8, [3], "piecewise linear", "mean", 1, "equiangular", "equiangular", False, 1e-5],
-            [129, 256, 128, 256, 32, 8, [3], "piecewise linear", "mean", 1, "equiangular", "equiangular", False, 1e-5],
-            [128, 256, 128, 256, 32, 8, [3, 2], "piecewise linear", "mean", 1, "equiangular", "equiangular", False, 1e-5],
-            [128, 256, 64, 128, 32, 8, [3], "piecewise linear", "mean", 1, "equiangular", "equiangular", False, 1e-5],
-            [128, 256, 128, 256, 32, 8, [3], "piecewise linear", "mean", 2, "equiangular", "equiangular", False, 1e-5],
-            [128, 256, 128, 256, 32, 6, [3], "piecewise linear", "mean", 1, "equiangular", "equiangular", False, 1e-5],
-            [128, 256, 128, 256, 32, 8, [3], "piecewise linear", "mean", 1, "equiangular", "equiangular", True, 1e-5],
-            [129, 256, 129, 256, 32, 8, [3], "piecewise linear", "mean", 1, "equiangular", "equiangular", True, 1e-5],
-            [128, 256, 128, 256, 32, 8, [3, 2], "piecewise linear", "mean", 1, "equiangular", "equiangular", True, 1e-5],
-            [64, 128, 128, 256, 32, 8, [3], "piecewise linear", "mean", 1, "equiangular", "equiangular", True, 1e-5],
-            [128, 256, 128, 256, 32, 8, [3], "piecewise linear", "mean", 2, "equiangular", "equiangular", True, 1e-5],
-            [128, 256, 128, 256, 32, 6, [3], "piecewise linear", "mean", 1, "equiangular", "equiangular", True, 1e-5],
+            [64, 128, 128, 256, 32, 8, "equiangular", "equiangular", "bilinear", 1e-7],
+            [128, 256, 64, 128, 32, 8, "equiangular", "equiangular", "bilinear", 1e-7],
+            [64, 128, 128, 256, 32, 8, "equiangular", "equiangular", "bilinear-spherical", 1e-7],
+            [128, 256, 64, 128, 32, 8, "equiangular", "equiangular", "bilinear-spherical", 1e-7],
         ]
     )
-    def test_distributed_disco_conv(
-        self, nlat_in, nlon_in, nlat_out, nlon_out, batch_size, num_chan, kernel_shape, basis_type, basis_norm_mode, groups, grid_in, grid_out, transpose, tol
+    def test_distributed_resampling(
+            self, nlat_in, nlon_in, nlat_out, nlon_out, batch_size, num_chan, grid_in, grid_out, mode, tol
     ):
 
         B, C, H, W = batch_size, num_chan, nlat_in, nlon_in
 
-        disco_args = dict(
-            in_channels=C,
-            out_channels=C,
-            in_shape=(nlat_in, nlon_in),
-            out_shape=(nlat_out, nlon_out),
-            basis_type=basis_type,
-            basis_norm_mode=basis_norm_mode,
-            kernel_shape=kernel_shape,
-            groups=groups,
+        res_args = dict(
+            nlat_in=nlat_in, 
+            nlon_in=nlon_in,
+            nlat_out=nlat_out, 
+            nlon_out=nlon_out,
             grid_in=grid_in,
             grid_out=grid_out,
-            bias=True,
+            mode=mode,
         )
 
-        # set up handles
-        if transpose:
-            conv_local = harmonics.DiscreteContinuousConvTransposeS2(**disco_args).to(self.device)
-            conv_dist = thd.DistributedDiscreteContinuousConvTransposeS2(**disco_args).to(self.device)
-        else:
-            conv_local = harmonics.DiscreteContinuousConvS2(**disco_args).to(self.device)
-            conv_dist = thd.DistributedDiscreteContinuousConvS2(**disco_args).to(self.device)
-
-        # copy the weights from the local conv into the dist conv
-        with torch.no_grad():
-            conv_dist.weight.copy_(conv_local.weight)
-            if disco_args["bias"]:
-                conv_dist.bias.copy_(conv_local.bias)
+        # set up handlesD
+        res_local = harmonics.ResampleS2(**res_args).to(self.device)
+        res_dist = thd.DistributedResampleS2(**res_args).to(self.device)
 
         # create tensors
         inp_full = torch.randn((B, C, H, W), dtype=torch.float32, device=self.device)
@@ -239,7 +217,7 @@ class TestDistributedDiscreteContinuousConvolution(unittest.TestCase):
         #############################################################
         # FWD pass
         inp_full.requires_grad = True
-        out_full = conv_local(inp_full)
+        out_full = res_local(inp_full)
 
         # create grad for backward
         with torch.no_grad():
@@ -256,11 +234,11 @@ class TestDistributedDiscreteContinuousConvolution(unittest.TestCase):
         # FWD pass
         inp_local = self._split_helper(inp_full)
         inp_local.requires_grad = True
-        out_local = conv_dist(inp_local)
+        out_local = res_dist(inp_local)
 
         # BWD pass
         ograd_local = self._split_helper(ograd_full)
-        out_local = conv_dist(inp_local)
+        out_local = res_dist(inp_local)
         out_local.backward(ograd_local)
         igrad_local = inp_local.grad.clone()
 
@@ -268,7 +246,7 @@ class TestDistributedDiscreteContinuousConvolution(unittest.TestCase):
         # evaluate FWD pass
         #############################################################
         with torch.no_grad():
-            out_gather_full = self._gather_helper_fwd(out_local, B, C, conv_dist)
+            out_gather_full = self._gather_helper_fwd(out_local, B, C, res_dist)
             err = torch.mean(torch.norm(out_full - out_gather_full, p="fro", dim=(-1, -2)) / torch.norm(out_full, p="fro", dim=(-1, -2)))
             if self.world_rank == 0:
                 print(f"final relative error of output: {err.item()}")
@@ -278,7 +256,7 @@ class TestDistributedDiscreteContinuousConvolution(unittest.TestCase):
         # evaluate BWD pass
         #############################################################
         with torch.no_grad():
-            igrad_gather_full = self._gather_helper_bwd(igrad_local, B, C, conv_dist)
+            igrad_gather_full = self._gather_helper_bwd(igrad_local, B, C, res_dist)
 
             err = torch.mean(torch.norm(igrad_full - igrad_gather_full, p="fro", dim=(-1, -2)) / torch.norm(igrad_full, p="fro", dim=(-1, -2)))
             if self.world_rank == 0:

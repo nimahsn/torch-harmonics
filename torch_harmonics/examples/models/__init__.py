@@ -2,7 +2,7 @@
 
 # SPDX-FileCopyrightText: Copyright (c) 2022 The torch-harmonics Authors. All rights reserved.
 # SPDX-License-Identifier: BSD-3-Clause
-# 
+#
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
 #
@@ -29,5 +29,5 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-from .utils.pde_dataset import PdeDataset
-from .models.sfno import SphericalFourierNeuralOperatorNet
+from .sfno import SphericalFourierNeuralOperatorNet
+from .lsno import LocalSphericalNeuralOperatorNet
